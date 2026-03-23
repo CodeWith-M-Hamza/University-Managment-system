@@ -1,7 +1,16 @@
 
 import React, { useEffect, useState } from "react";
 import CourseService from "../services/courseService";
-import DepartmentService from "../services/departmentService"; // Import DepartmentService
+import DepartmentService from "../services/departmentService";
+import { 
+  BookOpen, 
+  Plus, 
+  Trash2, 
+  Edit2, 
+  AlertCircle, 
+  CheckCircle, 
+  Loader
+} from "lucide-react";
 
 function Courses() {
   const [courses, setCourses] = useState([]);
@@ -223,64 +232,70 @@ function Courses() {
   );
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 py-10">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Course Management</h1>
-          <p className="mt-2 text-sm text-gray-600">
-            Manage all courses in the university system
-          </p>
+        {/* Header with Icon */}
+        <div className="mb-10">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="p-3 bg-indigo-600 rounded-lg">
+              <BookOpen className="w-6 h-6 text-white" />
+            </div>
+            <h1 className="text-4xl font-bold text-gray-900">Course Management</h1>
+          </div>
+          <p className="mt-2 text-gray-600 ml-12">Add, update, and manage university courses</p>
         </div>
 
         {/* Error Message */}
         {error && (
-          <div className="mb-6 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
-            {error}
+          <div className="mb-6 bg-red-50 border-l-4 border-red-500 text-red-700 px-5 py-4 rounded-lg shadow-sm flex items-start gap-3">
+            <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
+            <p>{error}</p>
           </div>
         )}
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Add Course Form */}
           <div className="lg:col-span-1">
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-              <h2 className="text-xl font-semibold text-gray-800 mb-4">
-                Add New Course
-              </h2>
+            <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-8 sticky top-8">
+              <div className="flex items-center gap-2 mb-6">
+                <Plus className="w-5 h-5 text-indigo-600" />
+                <h2 className="text-2xl font-bold text-gray-800">Add New Course</h2>
+              </div>
               
-              <form onSubmit={handleAdd} className="space-y-4">
+              <form onSubmit={handleAdd} className="space-y-5">
+                {/* Course Code */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Course Code *
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Course Code <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
                     name="code"
                     value={newCourse.code}
                     onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="e.g., CS-101"
-                    required
+                    placeholder="e.g., CS101"
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-indigo-500 focus:outline-none transition text-sm"
                   />
                 </div>
 
+                {/* Course Name */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Course Name *
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Course Name <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
                     name="name"
                     value={newCourse.name}
                     onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     placeholder="e.g., Introduction to Computer Science"
-                    required
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-indigo-500 focus:outline-none transition text-sm"
                   />
                 </div>
 
+                {/* Credit Hours */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
                     Credit Hours
                   </label>
                   <input
@@ -288,31 +303,34 @@ function Courses() {
                     name="credit_hours"
                     value={newCourse.credit_hours}
                     onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="3"
-                    min="1"
+                    placeholder="e.g., 3"
+                    min="0"
                     max="6"
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-indigo-500 focus:outline-none transition text-sm"
                   />
                 </div>
 
+                {/* Course Type */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
                     Course Type
                   </label>
                   <select
                     name="course_type"
                     value={newCourse.course_type}
                     onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-indigo-500 focus:outline-none transition text-sm"
                   >
                     <option value="theory">Theory</option>
                     <option value="lab">Lab</option>
+                    <option value="practical">Practical</option>
                   </select>
                 </div>
 
+                {/* Department */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Department *
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Department <span className="text-red-500">*</span>
                   </label>
                   {departmentLoading ? (
                     <DepartmentSelectSkeleton />
@@ -321,25 +339,35 @@ function Courses() {
                       name="department"
                       value={newCourse.department}
                       onChange={handleInputChange}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      required
+                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-indigo-500 focus:outline-none transition text-sm"
                     >
-                      <option value="">Select a department</option>
-                      {departments.map((dept) => (
+                      <option value="">Select Department</option>
+                      {departments.map(dept => (
                         <option key={dept.id} value={dept.id}>
-                          {dept.name} ({dept.code})
+                          {dept.name}
                         </option>
                       ))}
                     </select>
                   )}
                 </div>
 
+                {/* Submit Button */}
                 <button
                   type="submit"
-                  disabled={isLoading || departmentLoading}
-                  className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  disabled={isLoading}
+                  className="w-full bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white font-semibold py-3 rounded-lg transition duration-200 disabled:opacity-50 flex items-center justify-center gap-2 mt-6"
                 >
-                  {isLoading ? "Adding Course..." : "Add Course"}
+                  {isLoading ? (
+                    <>
+                      <Loader className="w-4 h-4 animate-spin" />
+                      Creating...
+                    </>
+                  ) : (
+                    <>
+                      <Plus className="w-4 h-4" />
+                      Add Course
+                    </>
+                  )}
                 </button>
               </form>
             </div>
@@ -347,33 +375,30 @@ function Courses() {
 
           {/* Courses List */}
           <div className="lg:col-span-2">
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-              <div className="px-6 py-4 border-b border-gray-200">
+            <div className="bg-white rounded-xl shadow-lg border border-gray-100">
+              <div className="px-8 py-6 border-b border-gray-200">
                 <div className="flex justify-between items-center">
-                  <h2 className="text-xl font-semibold text-gray-800">
-                    All Courses ({courses.length})
-                  </h2>
-                  <div className="flex space-x-2">
-                    <button
-                      onClick={fetchDepartments}
-                      disabled={departmentLoading}
-                      className="bg-gray-100 text-gray-700 px-3 py-2 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 disabled:opacity-50 transition-colors text-sm"
-                    >
-                      {departmentLoading ? "Loading..." : "Refresh Depts"}
-                    </button>
-                    <button
-                      onClick={fetchCourses}
-                      disabled={isLoading}
-                      className="bg-gray-100 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 disabled:opacity-50 transition-colors"
-                    >
-                      Refresh
-                    </button>
+                  <div className="flex items-center gap-2">
+                    <BookOpen className="w-5 h-5 text-indigo-600" />
+                    <h2 className="text-2xl font-bold text-gray-800">
+                      All Courses
+                    </h2>
+                    <span className="ml-2 px-3 py-1 bg-indigo-100 text-indigo-700 rounded-full text-sm font-semibold">
+                      {courses.length}
+                    </span>
                   </div>
+                  <button
+                    onClick={fetchCourses}
+                    disabled={isLoading}
+                    className="px-4 py-2 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 rounded-lg transition font-medium text-sm disabled:opacity-50"
+                  >
+                    {isLoading ? "Refreshing..." : "Refresh"}
+                  </button>
                 </div>
               </div>
 
               {isLoading && courses.length === 0 ? (
-                <div className="p-8 text-center">
+                <div className="p-12 text-center">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
                   <p className="mt-2 text-gray-600">Loading courses...</p>
                 </div>

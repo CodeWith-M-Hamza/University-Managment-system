@@ -1,7 +1,16 @@
-from django.urls import path
+from django.urls import path, include
+from rest_framework.routers import DefaultRouter
 from . import views
+from .views_bulk_import import BulkImportViewSet, ImportTemplateViewSet
+
+# Create router for bulk import endpoints
+router = DefaultRouter()
+router.register(r'bulk-imports', BulkImportViewSet, basename='bulk-import')
+router.register(r'import-templates', ImportTemplateViewSet, basename='import-template')
 
 urlpatterns = [
+    # Include bulk import router URLs
+    path('', include(router.urls)),
     # =====================================================
     # 🔐 Authentication
     # =====================================================
@@ -101,6 +110,7 @@ urlpatterns = [
     path('generated-schedules/', views.generated_schedule_list, name='generated-schedule-list'),
     path('generated-schedules/<int:pk>/', views.generated_schedule_detail, name='generated-schedule-detail'),
     path('generated-schedules/<int:pk>/activate/', views.activate_generated_schedule, name='activate-generated-schedule'),
+    path('generated-schedules/generate/', views.generate_timetable, name='generate-timetable'),
 
     # =====================================================
     # 🧠 Utility Endpoints

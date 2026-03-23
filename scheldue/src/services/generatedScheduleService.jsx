@@ -157,5 +157,65 @@ export const generatedScheduleService = {
       });
       throw error.response?.data || error.message;
     }
+  },
+
+  // GENERATE TIMETABLE
+  generateTimetable: async (generationData) => {
+    try {
+      console.log('Generating timetable with data:', generationData);
+
+      if (!generationData.name || !generationData.department || !generationData.academic_session) {
+        throw new Error('Missing required fields: name, department, academic_session');
+      }
+
+      const processedData = {
+        name: generationData.name,
+        department: parseInt(generationData.department),
+        academic_session: parseInt(generationData.academic_session)
+      };
+
+      console.log('Processed generation data:', processedData);
+
+      const response = await api.post(`${GENERATED_SCHEDULE_BASE_URL}generate/`, processedData);
+      console.log('Timetable generated successfully:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('❌ ERROR generating timetable:', {
+        status: error.response?.status,
+        data: error.response?.data,
+        message: error.message,
+        requestData: generationData
+      });
+
+      if (error.response?.data) {
+        console.log('🔍 Backend validation errors:', JSON.stringify(error.response.data, null, 2));
+      }
+
+      if (error.response?.status === 400) {
+        const errorData = error.response.data;
+        let errorMessage = 'Generation error: ';
+
+        if (typeof errorData === 'string') {
+          errorMessage += errorData;
+        } else if (errorData.detail) {
+          errorMessage += errorData.detail;
+        } else if (errorData.message) {
+          errorMessage += errorData.message;
+        } else if (errorData.error) {
+          errorMessage += errorData.error;
+        } else if (typeof errorData === 'object') {
+          const fieldErrors = Object.entries(errorData)
+            .map(([field, errors]) => `${field}: ${Array.isArray(errors) ? errors.join(', ') : errors}`)
+            .join('; ');
+          errorMessage += fieldErrors || 'Invalid data provided';
+        } else {
+          errorMessage += 'Invalid data provided';
+        }
+
+        throw new Error(errorMessage);
+      } else {
+        throw error.response?.data || error.message;
+      }
+    }
   }
 };

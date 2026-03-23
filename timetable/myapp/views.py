@@ -1001,12 +1001,12 @@ def get_active_schedule(request):
         department_id = request.query_params.get('department')
         if not department_id:
             return Response({'error': 'Department ID is required'}, status=status.HTTP_400_BAD_REQUEST)
-        
+
         active_schedule = GeneratedSchedule.objects.filter(
-            department_id=department_id, 
+            department_id=department_id,
             is_active=True
         ).first()
-        
+
         if active_schedule:
             serializer = GeneratedScheduleSerializer(active_schedule)
             return Response(serializer.data)
@@ -1014,3 +1014,190 @@ def get_active_schedule(request):
             return Response({'message': 'No active schedule found'}, status=status.HTTP_404_NOT_FOUND)
     except Exception as e:
         return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+
+# =========================
+# TIMETABLE GENERATION ALGORITHM
+# =========================
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def generate_timetable(request):
+    """
+    Generate a complete timetable for a department and academic session.
+    This implements a constraint-based scheduling algorithm.
+    """
+    try:
+        department_id = request.data.get('department')
+        academic_session_id = request.data.get('academic_session')
+        generated_schedule_name = request.data.get('name', 'Auto-generated Schedule')
+
+        if not department_id or not academic_session_id:
+            return Response({
+                'error': 'Department and Academic Session are required'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        # Get the department and session
+        try:
+            department = Department.objects.get(id=department_id)
+            academic_session = AcademicSession.objects.get(id=academic_session_id)
+        except (Department.DoesNotExist, AcademicSession.DoesNotExist):
+            return Response({
+                'error': 'Invalid department or academic session'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        # Create a GeneratedSchedule record
+        generated_schedule = GeneratedSchedule.objects.create(
+            name=generated_schedule_name,
+            academic_session=academic_session,
+            department=department,
+            generated_by=request.user if request.user.is_authenticated else User.objects.first()
+        )
+
+        # Get all course offerings for this department and session
+        course_offerings = CourseOffering.objects.filter(
+            class_section__department=department,
+            academic_session=academic_session
+        ).select_related('course', 'class_section', 'teacher')
+
+        if not course_offerings.exists():
+            return Response({
+                'error': 'No course offerings found for the selected department and session'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        # Get available time slots
+        time_slots = TimeSlot.objects.all().order_by('day', 'start_time')
+
+        # Get available rooms
+        rooms = Room.objects.filter(department=department)
+
+        # Get available teachers (include all teachers, not just department-specific)
+        teachers = list(Teacher.objects.all())
+
+        # Initialize tracking structures with existing schedules
+        teacher_schedule = {}  # teacher_id -> {day: set of time_slot_ids}
+        room_schedule = {}     # room_id -> {day: set of time_slot_ids}
+        section_schedule = {}  # section_id -> {day: set of time_slot_ids}
+
+        # Initialize empty schedules
+        for teacher in teachers:
+            teacher_schedule[teacher.id] = {day: set() for day in ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']}
+        for room in rooms:
+            room_schedule[room.id] = {day: set() for day in ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']}
+        for offering in course_offerings:
+            section_schedule[offering.class_section.id] = {day: set() for day in ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']}
+
+        # Load existing schedules to avoid conflicts
+        existing_schedules = Schedule.objects.filter(academic_session=academic_session)
+        for schedule in existing_schedules:
+            day = schedule.time_slot.day.lower()
+            if schedule.teacher_id in teacher_schedule:
+                teacher_schedule[schedule.teacher_id][day].add(schedule.time_slot_id)
+            if schedule.room_id in room_schedule:
+                room_schedule[schedule.room_id][day].add(schedule.time_slot_id)
+            if schedule.class_section_id in section_schedule:
+                section_schedule[schedule.class_section_id][day].add(schedule.time_slot_id)
+
+        # Track created schedules
+        created_schedules = []
+        failed_assignments = []
+
+        # Sort offerings by priority (core courses first, then by student count)
+        sorted_offerings = sorted(
+            course_offerings,
+            key=lambda x: (0 if x.is_core else 1, -x.class_section.total_students)
+        )
+
+        # Main scheduling algorithm
+        for offering in sorted_offerings:
+            course = offering.course
+            section = offering.class_section
+            teacher = offering.teacher
+
+            # Skip if no teacher assigned
+            if not teacher:
+                failed_assignments.append({
+                    'offering': f"{course.code} for {section.name}",
+                    'reason': 'No teacher assigned'
+                })
+                continue
+
+            # Calculate required slots (for now, just 1 slot per course)
+            required_slots = 1  # Simplified: one slot per course offering
+
+            # Try to find available slots
+            assigned = False
+
+            for time_slot in time_slots:
+                if assigned:
+                    break
+
+                day = time_slot.day.lower()
+
+                # Check if teacher is available
+                if time_slot.id in teacher_schedule[teacher.id][day]:
+                    continue
+
+                # Check if section is available
+                if time_slot.id in section_schedule[section.id][day]:
+                    continue
+
+                # Find an available room that fits the class size
+                available_room = None
+                for room in rooms:
+                    if (time_slot.id not in room_schedule[room.id][day] and
+                        room.capacity >= section.total_students):
+                        available_room = room
+                        break
+
+                if available_room:
+                    # Create the schedule entry
+                    schedule = Schedule.objects.create(
+                        time_slot=time_slot,
+                        teacher=teacher,
+                        course=course,
+                        room=available_room,
+                        department=department,
+                        academic_session=academic_session,
+                        class_section=section
+                    )
+
+                    # Update tracking structures
+                    teacher_schedule[teacher.id][day].add(time_slot.id)
+                    room_schedule[available_room.id][day].add(time_slot.id)
+                    section_schedule[section.id][day].add(time_slot.id)
+
+                    created_schedules.append(schedule)
+                    assigned = True
+
+                    # For now, skip consecutive slots logic
+                    break
+
+            if not assigned:
+                failed_assignments.append({
+                    'offering': f"{course.code} for {section.name}",
+                    'reason': 'No available time slots/rooms'
+                })
+
+        # Update the generated schedule with statistics
+        generated_schedule.total_schedules = len(created_schedules)
+        generated_schedule.save()
+
+        return Response({
+            'message': 'Timetable generated successfully',
+            'generated_schedule': GeneratedScheduleSerializer(generated_schedule).data,
+            'created_schedules': len(created_schedules),
+            'failed_assignments': len(failed_assignments),
+            'details': {
+                'successful': created_schedules,
+                'failed': failed_assignments
+            }
+        })
+
+    except Exception as e:
+        import traceback
+        print(f"Error generating timetable: {str(e)}")
+        print(traceback.format_exc())
+        return Response({
+            'error': f'Failed to generate timetable: {str(e)}'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

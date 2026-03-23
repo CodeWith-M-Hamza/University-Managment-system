@@ -56,6 +56,8 @@ const Navbar = ({ user, onLogout }) => {
     { name: 'Departments', href: '/departments', icon: BuildingOfficeIcon, description: 'Department setup' },
     { name: 'Rooms', href: '/rooms', icon: BuildingOfficeIcon, description: 'Room management' },
     { name: 'Time Slots', href: '/time-slots', icon: ClockIcon, description: 'Time slot management' },
+    { name: 'Data Entry', href: '/data-entry', icon: DocumentChartBarIcon, description: 'Add data one by one' },
+    { name: 'Bulk Import', href: '/bulk-import', icon: DocumentChartBarIcon, description: 'Import data from files' },
   ];
 
   const scheduleManagementNavigation = [

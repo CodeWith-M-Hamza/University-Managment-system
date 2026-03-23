@@ -76,12 +76,13 @@ const GeneratedScheduleList = ({ user }) => {
 
   const handleCreate = async (scheduleData) => {
     try {
-      await generatedScheduleService.createSchedule(scheduleData);
-      setSuccess('Schedule generated successfully!');
+      // Use the new generateTimetable endpoint instead of createSchedule
+      const result = await generatedScheduleService.generateTimetable(scheduleData);
+      setSuccess(`Timetable generated successfully! Created ${result.created_schedules} schedules.`);
       setShowForm(false);
       loadData();
     } catch (err) {
-      setError(err.message || 'Failed to generate schedule');
+      setError(err.message || 'Failed to generate timetable');
     }
   };
 
